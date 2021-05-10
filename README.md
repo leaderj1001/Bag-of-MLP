@@ -17,5 +17,5 @@
 |:-:|:-:|:-:|:-:|:-:|:-:|:-:|
 | ResNet50 baseline ([ref](https://github.com/kuangliu/pytorch-cifar)) | CIFAR10 | | | | 23.5M | 93.62 % |
 | MLPMixer (S/32) | CIFAR10 | 8 | 32 | 512 | 18.4M | wip |
-| ResMLP | CIFAR10 | 12 | 32 | 512 | 18.4M | wip 
+| ResMLP | CIFAR10 | 12 | 32 | 512 | 26.8M | wip 
 
