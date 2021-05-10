@@ -13,9 +13,9 @@
  <img width="938" alt="스크린샷 2021-05-10 오후 10 13 51" src="https://user-images.githubusercontent.com/22078438/117664706-0da8ff00-b1dd-11eb-9541-308e76680810.png">
 
 ## Experiments
-| Model | # of layers | Patch | Hidden | Params (M) | Acc (%) |
-|:-:|:-:|:-:|:-:|:-:|:-:|
-| ResNet50 baseline ([ref](https://github.com/kuangliu/pytorch-cifar)) | | | | 23.5M | 93.62 % |
-| MLPMixer (S/32) | 8 | 32 | 512 | 18.4M | wip |
-| ResMLP | 12 | 32 | 512 | 18.4M | wip 
+| Model | Dataset | # of layers | Patch | Hidden | Params (M) | Acc (%) |
+|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| ResNet50 baseline ([ref](https://github.com/kuangliu/pytorch-cifar)) | CIFAR10 | | | | 23.5M | 93.62 % |
+| MLPMixer (S/32) | CIFAR10 | 8 | 32 | 512 | 18.4M | wip |
+| ResMLP | CIFAR10 | 12 | 32 | 512 | 18.4M | wip 
 
