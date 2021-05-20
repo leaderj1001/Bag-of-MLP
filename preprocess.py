@@ -23,6 +23,6 @@ def load_data(args):
     ])
     test_dataset = CIFAR10('./data', train=False, transform=test_transform, download=True)
 
-    test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
+    test_loader = DataLoader(test_dataset, batch_size=128, shuffle=False, num_workers=args.num_workers)
 
     return train_loader, test_loader

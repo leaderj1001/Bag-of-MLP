@@ -7,7 +7,14 @@ from lamb import Lamb
 import os
 from config import load_config
 from preprocess import load_data
-from model import MLPMixer, ResMLP
+from model import MLPMixer, ResMLP, gMLP
+
+
+def adjust_learning_rate(optimizer, epoch, args):
+    """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""
+    lr = args.lr * (0.1 ** (epoch // 30))
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = lr
 
 
 def get_n_params(model):
@@ -44,6 +51,9 @@ def _train(epoch, train_loader, model, optimizer, criterion, args):
     for idx, (data, target) in enumerate(train_loader):
         if args.cuda:
             data, target = data.cuda(), target.cuda()
+        # batch_size, C, width, height = data.size()
+        # n = (width * height) // args.patch_size ** 2
+        # data = F.unfold(data, kernel_size=args.patch_size, stride=args.patch_size).view(batch_size, 7, 7, -1)
 
         output = model(data)
         _, pred = F.softmax(output, dim=-1).max(1)
@@ -73,6 +83,9 @@ def _eval(epoch, test_loader, model, args):
         for data, target in test_loader:
             if args.cuda:
                 data, target = data.cuda(), target.cuda()
+            # batch_size, C, width, height = data.size()
+            # n = (width * height) // args.patch_size ** 2
+            # data = F.unfold(data, kernel_size=args.patch_size, stride=args.patch_size).view(batch_size, 7, 7, -1)
             output = model(data)
             _, pred = F.softmax(output, dim=-1).max(1)
 
@@ -85,14 +98,13 @@ def _eval(epoch, test_loader, model, args):
 def main(args):
     train_loader, test_loader = load_data(args)
     n = (args.size * args.size) // args.patch_size ** 2
-    if args.models == 'MLPMixer':
-        model = MLPMixer(n, 3, args.dims, N=args.N)
-    elif args.models == 'ResMLP':
-        model = ResMLP(args.dims, N=args.N)
+    # model = MLPMixer(n, 3, args.dims, N=args.N)
+    # model = ResMLP(args.dims, N=args.N)
+    model = gMLP(49, args.dims, args.dims * 4, N=8)
     print('model parameters: {}'.format(get_n_params(model)))
 
-    # optimizer = optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay, momentum=args.momentum)
-    optimizer = optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    optimizer = optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay, momentum=args.momentum)
+    # optimizer = optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     # optimizer = Lamb(model.parameters(), lr=args.lr, weight_decay=args.weight_decay, betas=(.9, .999))
 
     if not os.path.isdir('checkpoints2'):
@@ -122,8 +134,9 @@ def main(args):
                 global_acc = best_acc
                 save_checkpoint(best_acc, model, optimizer, args, epoch)
 
-            lr_scheduler.step()
-            print('Current Learning Rate: {}'.format(lr_scheduler.get_last_lr()))
+            # lr_scheduler.step()
+            adjust_learning_rate(optimizer, epoch, args)
+            # print('Current Learning Rate: {}'.format(lr_scheduler.get_last_lr()))
     else:
         _eval(start_epoch, test_loader, model, args)
 

@@ -6,7 +6,6 @@ from tensorboardX import SummaryWriter
 from torch.optim import Optimizer
 
 
-
 # Reference
 # https://github.com/cybertronai/pytorch-lamb
 # Thank you

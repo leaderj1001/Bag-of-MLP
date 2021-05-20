@@ -117,6 +117,87 @@ class ResMLP(nn.Module):
         return self.out(out)
 
 
+class TinyAttention(nn.Module):
+    def __init__(self, d_ffn, d_attn=64):
+        super(TinyAttention, self).__init__()
+        self.qkv = nn.Linear(d_ffn, 3 * d_attn)
+        self.d_attn = d_attn
+
+        self.softmax = nn.Softmax(dim=-1)
+        self.out = nn.Linear(d_attn, d_ffn // 2)
+
+    def forward(self, x):
+        qkv = self.qkv(x)
+        q, k, v = torch.chunk(qkv, 3, dim=-1)
+        energy = torch.bmm(q, k.transpose(1, 2)) / (self.d_attn ** 0.5)
+        attn = self.softmax(energy)
+
+        out = torch.bmm(attn, v)
+        out = self.out(out)
+
+        return out
+
+
+class SpatialGatingUnit(nn.Module):
+    def __init__(self, seq_len, d_model, attn=True):
+        super(SpatialGatingUnit, self).__init__()
+        self.layer_norm = nn.LayerNorm(d_model // 2)
+        self.spatial = nn.Conv1d(seq_len, seq_len, kernel_size=1)
+        self.is_attn = attn
+        if self.is_attn:
+            self.attn = TinyAttention(d_model)
+
+    def forward(self, x):
+        if self.is_attn:
+            shortcut = x
+            shortcut = self.attn(shortcut)
+        u, v = torch.chunk(x, 2, dim=-1)
+        v = self.layer_norm(v)
+        v = self.spatial(v)
+        if self.is_attn:
+            v += shortcut
+
+        return u * v
+
+
+class gMLPBlock(nn.Module):
+    def __init__(self, seq_len, d_model, d_ffn):
+        super(gMLPBlock, self).__init__()
+        self.layer_norm = nn.LayerNorm(d_model)
+
+        self.channel1 = nn.Linear(d_model, d_ffn)
+        self.sgu = SpatialGatingUnit(seq_len, d_ffn)
+        self.channel2 = nn.Linear(d_ffn // 2, d_model)
+
+    def forward(self, x):
+        shortcut = x
+        out = self.layer_norm(x)
+        out = self.channel1(out)
+        out = F.gelu(out)
+        out = self.sgu(out)
+        out = self.channel2(out)
+
+        return out + shortcut
+
+
+class gMLP(nn.Module):
+    def __init__(self, seq_len, d_model, d_ffn, patch=32, N=12, n_classes=10):
+        super(gMLP, self).__init__()
+        self.d_model = d_model
+        self.embedding = nn.Conv2d(3, d_model, kernel_size=patch, stride=patch)
+        self.layers = nn.ModuleList([gMLPBlock(seq_len, d_model, d_ffn) for _ in range(N)])
+        self.out = nn.Linear(d_model, n_classes)
+
+    def forward(self, x):
+        out = self.embedding(x).permute(0, 2, 3, 1).view(x.size(0), -1, self.d_model)
+        for layer in self.layers:
+            out = layer(out)
+
+        out = out.mean(1)
+        out = self.out(out)
+        return out
+
+
 def main():
     x = torch.randn(2, 12, 32)
     m = MLPMixer(12, 32, 32)
